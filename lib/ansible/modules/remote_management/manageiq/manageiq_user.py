@@ -21,7 +21,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -68,6 +68,13 @@ options:
       - The users' E-mail address.
     required: false
     default: null
+  update_password:
+    required: false
+    default: always
+    choices: ['always', 'on_create']
+    description:
+      - C(always) will update passwords unconditionally.  C(on_create) will only set the password for a newly created user.
+    version_added: '2.5'
 '''
 
 EXAMPLES = '''
@@ -84,6 +91,18 @@ EXAMPLES = '''
       password: 'smartvm'
       verify_ssl: False
 
+- name: Create a new user in ManageIQ using a token
+  manageiq_user:
+    userid: 'jdoe'
+    name: 'Jane Doe'
+    password: 'VerySecret'
+    group: 'EvmGroup-user'
+    email: 'jdoe@example.com'
+    manageiq_connection:
+      url: 'http://127.0.0.1:3000'
+      token: 'sometoken'
+      verify_ssl: False
+
 - name: Delete a user in ManageIQ
   manageiq_user:
     state: 'absent'
@@ -94,6 +113,15 @@ EXAMPLES = '''
       password: 'smartvm'
       verify_ssl: False
 
+- name: Delete a user in ManageIQ using a token
+  manageiq_user:
+    state: 'absent'
+    userid: 'jdoe'
+    manageiq_connection:
+      url: 'http://127.0.0.1:3000'
+      token: 'sometoken'
+      verify_ssl: False
+
 - name: Update email of user in ManageIQ
   manageiq_user:
     userid: 'jdoe'
@@ -102,6 +130,15 @@ EXAMPLES = '''
       url: 'http://127.0.0.1:3000'
       username: 'admin'
       password: 'smartvm'
+      verify_ssl: False
+
+- name: Update email of user in ManageIQ using a token
+  manageiq_user:
+    userid: 'jdoe'
+    email: 'jaustine@example.com'
+    manageiq_connection:
+      url: 'http://127.0.0.1:3000'
+      token: 'sometoken'
       verify_ssl: False
 '''
 
@@ -155,7 +192,7 @@ class ManageIQUser(object):
             (name and user['name'] != name) or
             (password is not None) or
             (email and user['email'] != email) or
-            (group_id and user['group']['id'] != group_id)
+            (group_id and user['current_group_id'] != group_id)
         )
 
         return not found_difference
@@ -189,10 +226,15 @@ class ManageIQUser(object):
             resource['group'] = dict(id=group_id)
         if name is not None:
             resource['name'] = name
-        if password is not None:
-            resource['password'] = password
         if email is not None:
             resource['email'] = email
+
+        # if there is a password param, but 'update_password' is 'on_create'
+        # then discard the password (since we're editing an existing user)
+        if self.module.params['update_password'] == 'on_create':
+            password = None
+        if password is not None:
+            resource['password'] = password
 
         # check if we need to update ( compare_user is true is no difference found )
         if self.compare_user(user, name, group_id, password, email):
@@ -250,7 +292,9 @@ def main():
             password=dict(no_log=True),
             group=dict(),
             email=dict(),
-            state=dict(choices=['absent', 'present'], default='present')
+            state=dict(choices=['absent', 'present'], default='present'),
+            update_password=dict(choices=['always', 'on_create'],
+                                 default='always'),
         ),
     )
 

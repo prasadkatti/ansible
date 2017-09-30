@@ -8,7 +8,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['stableinterface'],
                     'supported_by': 'core'}
 
@@ -46,7 +46,8 @@ options:
         or M(template) module if you want that behavior.  If C(link), the symbolic
         link will be created or changed. Use C(hard) for hardlinks. If C(absent),
         directories will be recursively deleted, and files or symlinks will be unlinked.
-        Note that C(file) will not fail if the C(path) does not exist as the state did not change.
+        Note that C(absent) will not cause C(file) to fail if the C(path) does not exist
+        as the state did not change.
         If C(touch) (new in 1.4), an empty file will be created if the C(path) does not
         exist, while an existing file or directory will receive updated file access and
         modification times (similar to the way `touch` works from the command line).
@@ -250,6 +251,7 @@ def main():
         if basename:
             params['path'] = path = os.path.join(path, basename)
             b_path = to_bytes(path, errors='surrogate_or_strict')
+            prev_state = get_state(b_path)
 
     # make sure the target path is a directory when we're doing a recursive operation
     if recurse and state != 'directory':

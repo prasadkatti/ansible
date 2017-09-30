@@ -7,7 +7,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -1229,6 +1229,7 @@ class RHEV(object):
         self.__get_conn()
         return self.conn.set_VM_Host(vmname, vmhost)
 
+        # pylint: disable=unreachable
         VM = self.conn.get_VM(vmname)
         HOST = self.conn.get_Host(vmhost)
 

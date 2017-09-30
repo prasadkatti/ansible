@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -133,7 +133,10 @@ def main():
 
     instance_id = module.params.get('instance_id')
     key_file = module.params.get('key_file')
-    b_key_passphrase = to_bytes(module.params.get('key_passphrase'), errors='surrogate_or_strict')
+    if module.params.get('key_passphrase') is None:
+        b_key_passphrase = None
+    else:
+        b_key_passphrase = to_bytes(module.params.get('key_passphrase'), errors='surrogate_or_strict')
     wait = module.params.get('wait')
     wait_timeout = int(module.params.get('wait_timeout'))
 

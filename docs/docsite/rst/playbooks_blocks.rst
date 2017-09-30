@@ -30,9 +30,9 @@ In the example above, each of the 3 tasks will be executed after appending the `
 and evaluating it in the task's context. Also they inherit the privilege escalation directives enabling "become to root"
 for all the enclosed tasks.
 
-. versionadded:: 2.3
+.. versionadded:: 2.3
 
-The `name:` keyword for `blocks:` was added in Ansible 2.3.
+    The ``name:`` keyword for ``blocks:`` was added in Ansible 2.3.
 
 .. _block_error_handling:
 
@@ -61,7 +61,8 @@ Blocks also introduce the ability to handle errors in a way similar to exception
 
 The tasks in the ``block`` would execute normally, if there is any error the ``rescue`` section would get executed
 with whatever you need to do to recover from the previous error. The ``always`` section runs no matter what previous
-error did or did not occur in the ``block`` and ``rescue`` sections.
+error did or did not occur in the ``block`` and ``rescue`` sections. It should be noted that the play continues if a
+``rescue`` section completes successfully as it 'erases' the error status (but not the reporting), this means it won't trigger ``max_fail_percentage`` nor ``any_errors_fatal`` configurations but will appear in the playbook statistics.
 
 
 Another example is how to run handlers after an error occurred :

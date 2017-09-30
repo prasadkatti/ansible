@@ -40,7 +40,7 @@ from ansible.playbook.helpers import load_list_of_blocks
 from ansible.playbook.included_file import IncludedFile
 from ansible.playbook.task_include import TaskInclude
 from ansible.playbook.role_include import IncludeRole
-from ansible.plugins import action_loader, connection_loader, filter_loader, lookup_loader, module_loader, test_loader
+from ansible.plugins.loader import action_loader, connection_loader, filter_loader, lookup_loader, module_loader, test_loader
 from ansible.template import Templar
 from ansible.utils.vars import combine_vars
 from ansible.vars.manager import strip_internal_keys
@@ -327,7 +327,7 @@ class StrategyBase:
         while True:
             try:
                 self._results_lock.acquire()
-                task_result = self._results.pop()
+                task_result = self._results.popleft()
             except IndexError:
                 break
             finally:
@@ -615,9 +615,6 @@ class StrategyBase:
                 new_group = self._inventory.groups[group_name]
                 new_group.add_host(self._inventory.hosts[host_name])
 
-            # clear pattern caching completely since it's unpredictable what patterns may have referenced the group
-            self._inventory.clear_pattern_cache()
-
             # reconcile inventory, ensures inventory rules are followed
             self._inventory.reconcile_inventory()
 
@@ -655,7 +652,6 @@ class StrategyBase:
             changed = True
 
         if changed:
-            self._inventory.clear_pattern_cache()
             self._inventory.reconcile_inventory()
 
         return changed
@@ -899,6 +895,7 @@ class StrategyBase:
                 msg = "ending play"
         elif meta_action == 'reset_connection':
             connection = connection_loader.get(play_context.connection, play_context, os.devnull)
+            play_context.set_options_from_plugin(connection)
             if connection:
                 connection.reset()
                 msg = 'reset connection'

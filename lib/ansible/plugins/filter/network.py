@@ -56,7 +56,10 @@ def re_matchall(regex, value):
         obj = {}
         if regex.groupindex:
             for name, index in iteritems(regex.groupindex):
-                obj[name] = match[index - 1]
+                if len(regex.groupindex) == 1:
+                    obj[name] = match
+                else:
+                    obj[name] = match[index - 1]
             objects.append(obj)
     return objects
 
@@ -78,16 +81,87 @@ def parse_cli(output, tmpl):
     except ImportError as exc:
         raise AnsibleError(str(exc))
 
-    spec = yaml.load(open(tmpl).read())
+    spec = yaml.safe_load(open(tmpl).read())
     obj = {}
 
-    for name, attrs in iteritems(spec['attributes']):
+    for name, attrs in iteritems(spec['keys']):
         value = attrs['value']
 
-        if template.can_template(value):
-            value = template(value, spec)
+        try:
+            variables = spec.get('vars', {})
+            value = template(value, variables)
+        except:
+            pass
 
-        if 'items' in attrs:
+        if 'start_block' in attrs and 'end_block' in attrs:
+            start_block = re.compile(attrs['start_block'])
+            end_block = re.compile(attrs['end_block'])
+
+            blocks = list()
+            lines = None
+            block_started = False
+
+            for line in output.split('\n'):
+                match_start = start_block.match(line)
+                match_end = end_block.match(line)
+
+                if match_start:
+                    if lines:
+                        blocks.append('\n'.join(lines))
+                    lines = list()
+                    lines.append(line)
+                    block_started = True
+
+                elif match_end:
+                    if lines:
+                        lines.append(line)
+                    block_started = False
+
+                elif block_started:
+                    if lines:
+                        lines.append(line)
+
+            regex_items = [re.compile(r) for r in attrs['items']]
+            objects = list()
+
+            for block in blocks:
+                if isinstance(value, Mapping) and 'key' not in value:
+                    items = list()
+                    for regex in regex_items:
+                        match = regex.search(block)
+                        if match:
+                            item_values = match.groupdict()
+                            item_values['match'] = list(match.groups())
+                            items.append(item_values)
+                        else:
+                            items.append(None)
+
+                    obj = {}
+                    for k, v in iteritems(value):
+                        try:
+                            obj[k] = template(v, {'item': items}, fail_on_undefined=False)
+                        except:
+                            obj[k] = None
+                    objects.append(obj)
+
+                elif isinstance(value, Mapping):
+                    items = list()
+                    for regex in regex_items:
+                        match = regex.search(block)
+                        if match:
+                            item_values = match.groupdict()
+                            item_values['match'] = list(match.groups())
+                            items.append(item_values)
+                        else:
+                            items.append(None)
+
+                    key = template(value['key'], {'item': items})
+                    values = dict([(k, template(v, {'item': items})) for k, v in iteritems(value['values'])])
+                    objects.append({key: values})
+
+            return objects
+
+        elif 'items' in attrs:
             regexp = re.compile(attrs['items'])
             when = attrs.get('when')
             conditional = "{%% if %s %%}True{%% else %%}False{%% endif %%}" % when

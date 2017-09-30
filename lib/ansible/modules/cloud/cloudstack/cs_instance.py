@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Ansible. If not, see <http://www.gnu.org/licenses/>.
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['stableinterface'],
                     'supported_by': 'community'}
 
@@ -500,21 +500,6 @@ class AnsibleCloudStackInstance(AnsibleCloudStack):
                         return self._get_by_key(key, self.iso)
             self.module.fail_json(msg="ISO '%s' not found" % iso)
 
-
-    def get_disk_offering_id(self):
-        disk_offering = self.module.params.get('disk_offering')
-
-        if not disk_offering:
-            return None
-
-        disk_offerings = self.cs.listDiskOfferings()
-        if disk_offerings:
-            for d in disk_offerings['diskoffering']:
-                if disk_offering in [ d['displaytext'], d['name'], d['id'] ]:
-                    return d['id']
-        self.module.fail_json(msg="Disk offering '%s' not found" % disk_offering)
-
-
     def get_instance(self):
         instance = self.instance
         if not instance:
@@ -713,7 +698,7 @@ class AnsibleCloudStackInstance(AnsibleCloudStack):
         args['account']             = self.get_account(key='name')
         args['domainid']            = self.get_domain(key='id')
         args['projectid']           = self.get_project(key='id')
-        args['diskofferingid']      = self.get_disk_offering_id()
+        args['diskofferingid']      = self.get_disk_offering(key='id')
         args['networkids']          = networkids
         args['iptonetworklist']     = self.get_iptonetwork_mappings()
         args['userdata']            = self.get_user_data()
@@ -829,6 +814,9 @@ class AnsibleCloudStackInstance(AnsibleCloudStack):
                     # Start VM again if it was running before
                     if instance_state == 'running' and start_vm:
                         instance = self.start_instance()
+            else:
+                self.module.warn("Changes won't be applied to running instances. " +
+                                 "Use force=true to allow the instance %s to be stopped/started." % instance['name'])
         return instance
 
 

@@ -8,9 +8,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'core'}
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = """
@@ -53,10 +53,6 @@ options:
       - Description of Interface.
   aggregate:
     description: List of link aggregation definitions.
-  purge:
-    description:
-      - Purge link aggregation groups not defined in the aggregates parameter.
-    default: no
   state:
     description:
       - State of the link aggregation group.
@@ -71,7 +67,8 @@ requirements:
   - ncclient (>=v0.5.2)
 notes:
   - This module requires the netconf system service be enabled on
-    the remote device being managed
+    the remote device being managed.
+  - Tested against vSRX JUNOS version 15.1X49-D15.4, vqfx-10000 JUNOS Version 15.1X53-D60.4.
 """
 
 EXAMPLES = """
@@ -160,7 +157,10 @@ diff:
 """
 import collections
 
+from copy import deepcopy
+
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.network_common import remove_default_spec
 from ansible.module_utils.junos import junos_argument_spec, check_args
 from ansible.module_utils.junos import load_config, map_params_to_obj, map_obj_to_ele, to_param_list
 from ansible.module_utils.junos import commit_configuration, discard_changes, locked_config, get_configuration
@@ -171,7 +171,6 @@ except ImportError:
     from xml.etree.ElementTree import tostring
 
 USE_PERSISTENT_CONNECTION = True
-DEFAULT_COMMENT = 'configured by junos_linkagg'
 
 
 def validate_device_count(value, module):
@@ -260,36 +259,30 @@ def main():
     """
     element_spec = dict(
         name=dict(),
-        mode=dict(default='on', type='str', choices=['on', 'off', 'active', 'passive']),
+        mode=dict(default='on', choices=['on', 'off', 'active', 'passive']),
         members=dict(type='list'),
         min_links=dict(type='int'),
         device_count=dict(type='int'),
-        description=dict(default=DEFAULT_COMMENT),
+        description=dict(),
         state=dict(default='present', choices=['present', 'absent', 'up', 'down']),
         active=dict(default=True, type='bool')
     )
 
-    aggregate_spec = element_spec.copy()
+    aggregate_spec = deepcopy(element_spec)
     aggregate_spec['name'] = dict(required=True)
+
+    # remove default in aggregate spec, to handle common arguments
+    remove_default_spec(aggregate_spec)
 
     argument_spec = dict(
         aggregate=dict(type='list', elements='dict', options=aggregate_spec),
-        purge=dict(default=False, type='bool')
     )
 
     argument_spec.update(element_spec)
     argument_spec.update(junos_argument_spec)
 
     required_one_of = [['name', 'aggregate']]
-
-    mutually_exclusive = [['name', 'aggregate'],
-                          ['mode', 'aggregate'],
-                          ['members', 'aggregate'],
-                          ['min_links', 'aggregate'],
-                          ['device_count', 'aggregate'],
-                          ['description', 'aggregate'],
-                          ['state', 'aggregate'],
-                          ['active', 'aggregate']]
+    mutually_exclusive = [['name', 'aggregate']]
 
     module = AnsibleModule(argument_spec=argument_spec,
                            supports_check_mode=True,
@@ -307,8 +300,12 @@ def main():
     params = to_param_list(module)
     requests = list()
     for param in params:
-        item = param.copy()
+        # if key doesn't exist in the item, get it from module.params
+        for key in param:
+            if param.get(key) is None:
+                param[key] = module.params[key]
 
+        item = param.copy()
         state = item.get('state')
         item['disable'] = True if state == 'down' else False
 
@@ -330,7 +327,7 @@ def main():
     diff = None
     with locked_config(module):
         for req in requests:
-            diff = load_config(module, tostring(req), warnings, action='replace')
+            diff = load_config(module, tostring(req), warnings, action='merge')
 
         commit = not module.check_mode
         if diff:

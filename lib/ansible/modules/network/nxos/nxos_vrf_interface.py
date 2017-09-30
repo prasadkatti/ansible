@@ -16,9 +16,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'community'}
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = '''
@@ -33,6 +33,7 @@ author:
     - Jason Edelman (@jedelman8)
     - Gabriele Gerbino (@GGabriele)
 notes:
+    - Tested against NXOSv 7.3.(0)D1(1) on VIRL
     - VRF needs to be added globally with M(nxos_vrf) before
       adding a VRF to an interface.
     - Remove a VRF from an interface will still remove
@@ -203,7 +204,7 @@ def main():
                         "Use nxos_vrf to fix this.")
 
     intf_type = get_interface_type(interface)
-    if (intf_type != 'ethernet' and module.params['transport'] == 'cli'):
+    if (intf_type != 'ethernet' and module.params['provider']['transport'] == 'cli'):
         if is_default(interface, module) == 'DNE':
             module.fail_json(msg="interface does not exist on switch. Verify "
                                  "switch platform or create it first with "

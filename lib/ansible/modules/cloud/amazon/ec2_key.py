@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['stableinterface'],
-                    'supported_by': 'curated'}
+                    'supported_by': 'certified'}
 
 
 DOCUMENTATION = '''
@@ -219,7 +219,6 @@ def main():
                                 module.fail_json(msg="timed out while waiting for the key to be re-created")
 
                     changed = True
-            pass
 
         # if the key doesn't exist, create it now
         else:

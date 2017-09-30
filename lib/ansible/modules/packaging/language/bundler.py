@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -136,9 +136,10 @@ from ansible.module_utils.basic import AnsibleModule
 
 def get_bundler_executable(module):
     if module.params.get('executable'):
-        return module.params.get('executable').split(' ')
+        result = module.params.get('executable').split(' ')
     else:
-        return [ module.get_bin_path('bundle', True) ]
+        result = [module.get_bin_path('bundle', True)]
+    return result
 
 
 def main():

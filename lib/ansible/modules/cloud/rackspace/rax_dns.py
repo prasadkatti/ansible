@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -122,7 +122,6 @@ def rax_dns(module, comment, email, name, state, ttl):
             domain = dns.find(name=name)
         except pyrax.exceptions.NotFound:
             domain = {}
-            pass
         except Exception as e:
             module.fail_json(msg='%s' % e.message)
 

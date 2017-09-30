@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -707,13 +707,13 @@ def create(client, subnet_id, allocation_id, client_token=None,
     except botocore.exceptions.ClientError as e:
         if "IdempotentParameterMismatch" in e.message:
             err_msg = (
-                'NAT Gateway does not support update and token has already been provided'
+                'NAT Gateway does not support update and token has already been provided: ' + str(e)
             )
         else:
             err_msg = str(e)
-            success = False
-            changed = False
-            result = None
+        success = False
+        changed = False
+        result = None
 
     return success, changed, err_msg, result
 

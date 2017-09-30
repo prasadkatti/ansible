@@ -8,7 +8,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'core'}
 
@@ -253,9 +253,9 @@ def main():
         insertafter = 'EOF'
 
     if insertafter not in (None, 'EOF'):
-        insertre = re.compile(insertafter)
+        insertre = re.compile(to_bytes(insertafter, errors='surrogate_or_strict'))
     elif insertbefore not in (None, 'BOF'):
-        insertre = re.compile(insertbefore)
+        insertre = re.compile(to_bytes(insertbefore, errors='surrogate_or_strict'))
     else:
         insertre = None
 

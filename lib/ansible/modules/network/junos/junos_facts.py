@@ -8,9 +8,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'core'}
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = """
@@ -57,7 +57,8 @@ notes:
   - Ensure I(config_format) used to retrieve configuration from device
     is supported by junos version running on device.
   - This module requires the netconf system service be enabled on
-    the remote device being managed
+    the remote device being managed.
+  - Tested against vSRX JUNOS version 15.1X49-D15.4, vqfx-10000 JUNOS Version 15.1X53-D60.4.
 """
 
 EXAMPLES = """
@@ -81,6 +82,7 @@ from ansible.module_utils.junos import get_configuration
 from ansible.module_utils.pycompat24 import get_exception
 from ansible.module_utils.netconf import send_request
 from ansible.module_utils.six import iteritems
+
 
 try:
     from lxml.etree import Element, SubElement, tostring
@@ -137,7 +139,6 @@ class Default(FactsBase):
 
         reply = self.rpc('get-chassis-inventory')
         data = reply.find('.//chassis-inventory/chassis')
-
         self.facts['serialnum'] = self.get_text(data, 'serial-number')
 
 
@@ -181,6 +182,38 @@ class Hardware(FactsBase):
         for obj in data:
             filesystems.append(self.get_text(obj, 'filesystem-name'))
         self.facts['filesystems'] = filesystems
+
+        reply = self.rpc('get-route-engine-information')
+        data = reply.find('.//route-engine-information')
+
+        routing_engines = dict()
+        for obj in data:
+            slot = self.get_text(obj, 'slot')
+            routing_engines.update({slot: {}})
+            routing_engines[slot].update({'slot': slot})
+            for child in obj:
+                if child.text != "\n":
+                    routing_engines[slot].update({child.tag.replace("-", "_"): child.text})
+
+        self.facts['routing_engines'] = routing_engines
+
+        if len(data) > 1:
+            self.facts['has_2RE'] = True
+        else:
+            self.facts['has_2RE'] = False
+
+        reply = self.rpc('get-chassis-inventory')
+        data = reply.findall('.//chassis-module')
+
+        modules = list()
+        for obj in data:
+            mod = dict()
+            for child in obj:
+                if child.text != "\n":
+                    mod.update({child.tag.replace("-", "_"): child.text})
+            modules.append(mod)
+
+        self.facts['modules'] = modules
 
 
 class Interfaces(FactsBase):
