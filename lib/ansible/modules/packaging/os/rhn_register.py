@@ -8,11 +8,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {
-    'metadata_version': '1.0',
-    'status': ['preview'],
-    'supported_by': 'community'
-}
+ANSIBLE_METADATA = {'metadata_version': '1.1',
+                    'status': ['preview'],
+                    'supported_by': 'community'}
 
 
 DOCUMENTATION = '''
@@ -83,6 +81,12 @@ options:
             - If true, extended update support will be requested.
         required: false
         default: false
+    nopackages:
+        description:
+            - If true, the registered node will not upload its installed packages information to Satellite server
+        required: false
+        default: false
+        version_added: "2.5"
 '''
 
 EXAMPLES = '''
@@ -252,7 +256,7 @@ class Rhn(redhat.RegistrationBase):
         self.update_plugin_conf('rhnplugin', True)
         self.update_plugin_conf('subscription-manager', False)
 
-    def register(self, enable_eus=False, activationkey=None, profilename=None, sslcacert=None, systemorgid=None):
+    def register(self, enable_eus=False, activationkey=None, profilename=None, sslcacert=None, systemorgid=None, nopackages=False):
         '''
             Register system to RHN.  If enable_eus=True, extended update
             support will be requested.
@@ -264,6 +268,8 @@ class Rhn(redhat.RegistrationBase):
             register_cmd.extend(['--serverUrl', self.server_url])
         if enable_eus:
             register_cmd.append('--use-eus-channel')
+        if nopackages:
+            register_cmd.append('--nopackages')
         if activationkey is not None:
             register_cmd.extend(['--activationkey', activationkey])
         if profilename is not None:
@@ -348,6 +354,7 @@ def main():
             sslcacert=dict(default=None, required=False, type='path'),
             systemorgid=dict(default=None, required=False),
             enable_eus=dict(default=False, type='bool'),
+            nopackages=dict(default=False, type='bool'),
             channels=dict(default=[], type='list'),
         )
     )
@@ -366,6 +373,7 @@ def main():
     systemorgid = module.params['systemorgid']
     channels = module.params['channels']
     enable_eus = module.params['enable_eus']
+    nopackages = module.params['nopackages']
 
     rhn = Rhn(module=module, username=username, password=password)
 
@@ -394,7 +402,7 @@ def main():
 
         try:
             rhn.enable()
-            rhn.register(enable_eus, activationkey, profilename, sslcacert, systemorgid)
+            rhn.register(enable_eus, activationkey, profilename, sslcacert, systemorgid, nopackages)
             rhn.subscribe(channels)
         except Exception as exc:
             module.fail_json(msg="Failed to register with '%s': %s" % (rhn.hostname, exc))

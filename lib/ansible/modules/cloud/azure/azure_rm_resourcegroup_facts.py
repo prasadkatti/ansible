@@ -9,9 +9,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'curated'}
+                    'supported_by': 'certified'}
 
 
 DOCUMENTATION = '''
@@ -52,7 +52,7 @@ EXAMPLES = '''
         name: Testing
 
     - name: Get facts for all resource groups
-      azure_rm_securitygroup_facts:
+      azure_rm_resourcegroup_facts:
 
     - name: Get facts by tags
       azure_rm_resourcegroup_facts:

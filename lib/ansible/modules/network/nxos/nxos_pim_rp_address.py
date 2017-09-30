@@ -16,11 +16,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ANSIBLE_METADATA = {
-    'metadata_version': '1.0',
-    'status': ['preview'],
-    'supported_by': 'community',
-}
+ANSIBLE_METADATA = {'metadata_version': '1.1',
+                    'status': ['preview'],
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = '''
@@ -34,7 +32,8 @@ description:
     rendezvous point (RP) address instance.
 author: Gabriele Gerbino (@GGabriele)
 notes:
-  - C(state=absent) remove the whole rp-address configuration, if existing.
+  - Tested against NXOSv 7.3.(0)D1(1) on VIRL
+  - C(state=absent) is currently not supported on all platforms.
 options:
   rp_address:
     description:
@@ -103,12 +102,12 @@ def get_existing(module, args):
 
         existing['bidir'] = existing.get('bidir') or 'bidir' in line
         if len(values) > 2:
-            value = values[1]
-            if values[2] == 'route-map':
+            value = values[2]
+            if values[1] == 'route-map':
                 existing['route_map'] = value
-            elif values[2] == 'prefix-list':
+            elif values[1] == 'prefix-list':
                 existing['prefix_list'] = value
-            elif values[2] == 'group-list':
+            elif values[1] == 'group-list':
                 existing['group_list'] = value
 
     return existing

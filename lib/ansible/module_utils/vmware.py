@@ -31,6 +31,7 @@ try:
 except ImportError:
     HAS_PYVMOMI = False
 
+from ansible.module_utils._text import to_text
 from ansible.module_utils.urls import fetch_url
 from ansible.module_utils.six import integer_types, iteritems, string_types
 
@@ -234,11 +235,11 @@ def compile_folder_path_for_object(vobj):
     thisobj = vobj
     while hasattr(thisobj, 'parent'):
         thisobj = thisobj.parent
+        if thisobj._moId == 'group-d1':
+            break
         if isinstance(thisobj, vim.Folder):
             paths.append(thisobj.name)
     paths.reverse()
-    if paths[0] == 'Datacenters':
-        paths.remove('Datacenters')
     return '/' + '/'.join(paths)
 
 
@@ -384,7 +385,6 @@ def vmware_argument_spec():
 
 
 def connect_to_api(module, disconnect_atexit=True):
-
     hostname = module.params['hostname']
     username = module.params['username']
     password = module.params['password']
@@ -394,21 +394,23 @@ def connect_to_api(module, disconnect_atexit=True):
         module.fail_json(msg='pyVim does not support changing verification mode with python < 2.7.9. Either update '
                              'python or or use validate_certs=false')
 
+    ssl_context = None
+    if not validate_certs:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+    service_instance = None
     try:
-        service_instance = connect.SmartConnect(host=hostname, user=username, pwd=password)
-    except vim.fault.InvalidLogin as invalid_login:
-        module.fail_json(msg=invalid_login.msg, apierror=str(invalid_login))
-    except (requests.ConnectionError, ssl.SSLError) as connection_error:
-        if '[SSL: CERTIFICATE_VERIFY_FAILED]' in str(connection_error) and not validate_certs:
-            context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            context.verify_mode = ssl.CERT_NONE
-            service_instance = connect.SmartConnect(host=hostname, user=username, pwd=password, sslContext=context)
-        else:
-            module.fail_json(msg="Unable to connect to vCenter or ESXi API on TCP/443.", apierror=str(connection_error))
-    except:
-        context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        context.verify_mode = ssl.CERT_NONE
-        service_instance = connect.SmartConnect(host=hostname, user=username, pwd=password, sslContext=context)
+        service_instance = connect.SmartConnect(host=hostname, user=username, pwd=password, sslContext=ssl_context)
+    except vim.fault.InvalidLogin as e:
+        module.fail_json(msg="Unable to log on to vCenter or ESXi API at %s as %s: %s" % (hostname, username, e.msg))
+    except (requests.ConnectionError, ssl.SSLError) as e:
+        module.fail_json(msg="Unable to connect to vCenter or ESXi API at %s on TCP/443: %s" % (hostname, e))
+    except Exception as e:
+        module.fail_json(msg="Unknown error connecting to vCenter or ESXi API at %s: %s" % (hostname, e))
+
+    if service_instance is None:
+        module.fail_json(msg="Unknown error connecting to vCenter or ESXi API at %s" % hostname)
 
     # Disabling atexit should be used in special cases only.
     # Such as IP change of the ESXi host which removes the connection anyway.
@@ -592,22 +594,14 @@ def serialize_spec(clonespec):
         xt = type(xo)
         if xo is None:
             data[x] = None
-        elif issubclass(xt, list):
-            data[x] = []
-            for xe in xo:
-                data[x].append(serialize_spec(xe))
-        elif issubclass(xt, string_types + integer_types + (float, bool)):
-            data[x] = xo
-        elif issubclass(xt, dict):
-            data[x] = {}
-            for k, v in xo.items():
-                data[x][k] = serialize_spec(v)
         elif isinstance(xo, vim.vm.ConfigSpec):
             data[x] = serialize_spec(xo)
         elif isinstance(xo, vim.vm.RelocateSpec):
             data[x] = serialize_spec(xo)
         elif isinstance(xo, vim.vm.device.VirtualDisk):
             data[x] = serialize_spec(xo)
+        elif isinstance(xo, vim.vm.device.VirtualDeviceSpec.FileOperation):
+            data[x] = to_text(xo)
         elif isinstance(xo, vim.Description):
             data[x] = {
                 'dynamicProperty': serialize_spec(xo.dynamicProperty),
@@ -616,10 +610,41 @@ def serialize_spec(clonespec):
                 'summary': serialize_spec(xo.summary),
             }
         elif hasattr(xo, 'name'):
-            data[x] = str(xo) + ':' + xo.name
+            data[x] = to_text(xo) + ':' + to_text(xo.name)
         elif isinstance(xo, vim.vm.ProfileSpec):
             pass
+        elif issubclass(xt, list):
+            data[x] = []
+            for xe in xo:
+                data[x].append(serialize_spec(xe))
+        elif issubclass(xt, string_types + integer_types + (float, bool)):
+            if issubclass(xt, integer_types):
+                data[x] = int(xo)
+            else:
+                data[x] = to_text(xo)
+        elif issubclass(xt, bool):
+            data[x] = xo
+        elif issubclass(xt, dict):
+            data[to_text(x)] = {}
+            for k, v in xo.items():
+                k = to_text(k)
+                data[x][k] = serialize_spec(v)
         else:
             data[x] = str(xt)
 
     return data
+
+
+def find_host_by_cluster_datacenter(module, content, datacenter_name, cluster_name, host_name):
+    dc = find_datacenter_by_name(content, datacenter_name)
+    if dc is None:
+        module.fail_json(msg="Unable to find datacenter with name %s" % datacenter_name)
+    cluster = find_cluster_by_name(content, cluster_name, datacenter=dc)
+    if cluster is None:
+        module.fail_json(msg="Unable to find cluster with name %s" % cluster_name)
+
+    for host in cluster.host:
+        if host.name == host_name:
+            return host, cluster
+
+    return None, cluster

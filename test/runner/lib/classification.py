@@ -98,6 +98,8 @@ def categorize_changes(args, paths, verbose_command=None):
             commands[command].add(target)
 
     for command in commands:
+        commands[command].discard('none')
+
         if any(t == 'all' for t in commands[command]):
             commands[command] = set(['all'])
 
@@ -216,6 +218,7 @@ class PathMapper(object):
         :type path: str
         :rtype: dict[str, str] | None
         """
+        dirname = os.path.dirname(path)
         filename = os.path.basename(path)
         name, ext = os.path.splitext(filename)
 
@@ -247,14 +250,14 @@ class PathMapper(object):
             return minimal
 
         if path.startswith('lib/ansible/modules/'):
-            module = self.module_names_by_path.get(path)
+            module_name = self.module_names_by_path.get(path)
 
-            if module:
+            if module_name:
                 return {
-                    'units': module if module in self.units_modules else None,
-                    'integration': self.posix_integration_by_module.get(module) if ext == '.py' else None,
-                    'windows-integration': self.windows_integration_by_module.get(module) if ext == '.ps1' else None,
-                    'network-integration': self.network_integration_by_module.get(module),
+                    'units': module_name if module_name in self.units_modules else None,
+                    'integration': self.posix_integration_by_module.get(module_name) if ext == '.py' else None,
+                    'windows-integration': self.windows_integration_by_module.get(module_name) if ext == '.ps1' else None,
+                    'network-integration': self.network_integration_by_module.get(module_name),
                 }
 
             return minimal
@@ -372,6 +375,9 @@ class PathMapper(object):
         if path.startswith('test/results/'):
             return minimal
 
+        if path.startswith('test/legacy/'):
+            return minimal
+
         if path.startswith('test/integration/roles/'):
             return minimal
 
@@ -398,11 +404,33 @@ class PathMapper(object):
             }
 
         if path.startswith('test/integration/'):
-            if self.prefixes.get(name) == 'network' and ext == '.yaml':
-                return minimal  # network integration test playbooks are not used by ansible-test
+            if dirname == 'test/integration':
+                if self.prefixes.get(name) == 'network' and ext == '.yaml':
+                    return minimal  # network integration test playbooks are not used by ansible-test
 
-            if filename == 'platform_agnostic.yaml':
-                return minimal  # network integration test playbook not used by ansible-test
+                if filename == 'network-all.yaml':
+                    return minimal  # network integration test playbook not used by ansible-test
+
+                if filename == 'platform_agnostic.yaml':
+                    return minimal  # network integration test playbook not used by ansible-test
+
+                for command in (
+                        'integration',
+                        'windows-integration',
+                        'network-integration',
+                ):
+                    if name == command and ext == '.cfg':
+                        return {
+                            command: self.integration_all_target,
+                        }
+
+                if name.startswith('cloud-config-'):
+                    cloud_target = 'cloud/%s/' % name.split('-')[2].split('.')[0]
+
+                    if cloud_target in self.integration_targets_by_alias:
+                        return {
+                            'integration': cloud_target,
+                        }
 
             return {
                 'integration': self.integration_all_target,
@@ -442,6 +470,11 @@ class PathMapper(object):
                 }
 
             return all_tests(self.args)  # test infrastructure, run all tests
+
+        if path.startswith('test/runner/lib/sanity/'):
+            return {
+                'sanity': 'all',  # test infrastructure, run all sanity checks
+            }
 
         if path.startswith('test/runner/'):
             return all_tests(self.args)  # test infrastructure, run all tests

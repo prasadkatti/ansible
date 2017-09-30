@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'core'}
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = """
@@ -33,6 +33,8 @@ description:
     module will always collect a base set of facts from the device
     and can enable or disable collection of additional facts.
 extends_documentation_fragment: ios
+notes:
+  - Tested against IOS 15.6
 options:
   gather_subset:
     description:
@@ -182,7 +184,7 @@ class Default(FactsBase):
             self.facts['hostname'] = self.parse_hostname(data)
 
     def parse_version(self, data):
-        match = re.search(r'Version (\S+),', data)
+        match = re.search(r'Version (\S+?)(?:,\s|\s)', data)
         if match:
             return match.group(1)
 

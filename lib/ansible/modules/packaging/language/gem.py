@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -50,6 +50,7 @@ options:
     description:
       - Install gem in user's local gems cache or for all users
     required: false
+    choices: ["yes", "no"]
     default: "yes"
     version_added: "1.3"
   executable:
@@ -115,9 +116,10 @@ from ansible.module_utils.basic import AnsibleModule
 
 def get_rubygems_path(module):
     if module.params['executable']:
-        return module.params['executable'].split(' ')
+        result = module.params['executable'].split(' ')
     else:
-        return [ module.get_bin_path('gem', True) ]
+        result = [module.get_bin_path('gem', True)]
+    return result
 
 def get_rubygems_version(module):
     cmd = get_rubygems_path(module) + [ '--version' ]

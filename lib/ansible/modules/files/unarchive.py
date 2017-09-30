@@ -4,14 +4,13 @@
 # Copyright: (c) 2012, Michael DeHaan <michael.dehaan@gmail.com>
 # Copyright: (c) 2013, Dylan Martin <dmartin@seattlecentral.edu>
 # Copyright: (c) 2015, Toshio Kuratomi <tkuratomi@ansible.com>
-# Copyright: (c) 2016, Dag Wieers <dag@wieers.com>
 # Copyright: (c) 2017, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'core'}
 
@@ -85,7 +84,7 @@ options:
     type: 'bool'
     default: 'yes'
     version_added: "2.2"
-author: Dag Wieers (@dagwieers)
+author: Michael DeHaan
 todo:
     - Re-implement tar support using native tarfile module.
     - Re-implement zip support using native zipfile module.

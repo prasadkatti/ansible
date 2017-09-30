@@ -7,7 +7,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -855,7 +855,7 @@ class TaskParameters(DockerBaseClass):
             mem_limit='memory',
             mem_reservation='mem_reservation',
             memswap_limit='memory_swap',
-            kernel_memory='kernel_memory'
+            kernel_memory='kernel_memory',
         )
         result = dict()
         for key, value in update_parameters.items():
@@ -966,6 +966,7 @@ class TaskParameters(DockerBaseClass):
             memswap_limit='memory_swap',
             mem_swappiness='memory_swappiness',
             oom_score_adj='oom_score_adj',
+            oom_kill_disable='oom_killer',
             shm_size='shm_size',
             group_add='groups',
             devices='devices',
@@ -1288,7 +1289,6 @@ class Container(DockerBaseClass):
         # Map parameters to container inspect results
         config_mapping = dict(
             auto_remove=host_config.get('AutoRemove'),
-            image=config.get('Image'),
             expected_cmd=config.get('Cmd'),
             hostname=config.get('Hostname'),
             user=config.get('User'),
@@ -1438,6 +1438,7 @@ class Container(DockerBaseClass):
             memory_reservation=host_config.get('MemoryReservation'),
             memory_swap=host_config.get('MemorySwap'),
             oom_score_adj=host_config.get('OomScoreAdj'),
+            oom_killer=host_config.get('OomKillDisable'),
         )
 
         differences = []

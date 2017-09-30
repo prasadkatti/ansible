@@ -6,9 +6,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'status': ['stableinterface'],
-                    'supported_by': 'community',
-                    'metadata_version': '1.0'}
+ANSIBLE_METADATA = {'metadata_version': '1.1',
+                    'status': ['stableinterface'],
+                    'supported_by': 'community'}
 
 DOCUMENTATION = '''
 ---
@@ -188,7 +188,7 @@ def get_or_create_policy_version(module, iam, policy, policy_document):
         version = iam.create_policy_version(PolicyArn=policy['Arn'], PolicyDocument=policy_document)['PolicyVersion']
         return version, True
     except botocore.exceptions.ClientError as e:
-        if e['Error']['Code'] == 'LimitExceeded':
+        if e.response['Error']['Code'] == 'LimitExceeded':
             delete_oldest_non_default_version(module, iam, policy)
             try:
                 version = iam.create_policy_version(PolicyArn=policy['Arn'], PolicyDocument=policy_document)['PolicyVersion']

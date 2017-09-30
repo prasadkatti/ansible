@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['stableinterface'],
                     'supported_by': 'core'}
 
@@ -76,6 +76,9 @@ options:
         required: false
         description:
             - Optionally set the user's shell.
+            - On Mac OS X, before version 2.5, the default shell for non-system users was
+              /usr/bin/false. Since 2.5, the default shell for non-system users on
+              Mac OS X is /bin/bash.
     home:
         required: false
         description:
@@ -83,7 +86,7 @@ options:
     skeleton:
         required: false
         description:
-            - Optionally set a home skeleton directory. Requires createhome option!
+            - Optionally set a home skeleton directory. Requires create_home option!
         version_added: "2.0"
     password:
         required: false
@@ -100,14 +103,15 @@ options:
         choices: [ present, absent ]
         description:
             - Whether the account should exist or not, taking action if the state is different from what is stated.
-    createhome:
-        required: false
-        default: "yes"
-        choices: [ "yes", "no" ]
+    create_home:
         description:
             - Unless set to C(no), a home directory will be made for the user
               when the account is created or if the home directory does not
               exist.
+            - Changed from C(createhome) to C(create_home) in version 2.5.
+        default: yes
+        type: bool
+        aliases: ['createhome']
     move_home:
         required: false
         default: "no"
@@ -197,6 +201,15 @@ options:
         description:
             - An expiry time for the user in epoch, it will be ignored on platforms that do not support this.
               Currently supported on Linux and FreeBSD.
+    local:
+        version_added: "2.4"
+        required: false
+        default: "False"
+        description:
+            - Forces the use of "local" command alternatives on platforms that implement it.
+              This is useful in environments that use centralized authentification when you want to manipulate the local users.
+              I.E. it uses `luseradd` instead of `useradd`.
+            - This requires that these commands exist on the targeted host, otherwise it will be a fatal error.
 '''
 
 EXAMPLES = '''
@@ -252,7 +265,6 @@ try:
 except:
     HAVE_SPWD=False
 
-
 class User(object):
     """
     This is a generic User manipulation class that is subclassed
@@ -290,7 +302,7 @@ class User(object):
         self.password   = module.params['password']
         self.force      = module.params['force']
         self.remove     = module.params['remove']
-        self.createhome = module.params['createhome']
+        self.create_home = module.params['create_home']
         self.move_home  = module.params['move_home']
         self.skeleton   = module.params['skeleton']
         self.system     = module.params['system']
@@ -305,6 +317,7 @@ class User(object):
         self.home    = module.params['home']
         self.expires = None
         self.groups = None
+        self.local = module.params['local']
 
         if module.params['groups'] is not None:
             self.groups = ','.join(module.params['groups'])
@@ -332,7 +345,12 @@ class User(object):
             return self.module.run_command(cmd, use_unsafe_shell=use_unsafe_shell, data=data)
 
     def remove_user_userdel(self):
-        cmd = [self.module.get_bin_path('userdel', True)]
+        if self.local:
+            command_name = 'luserdel'
+        else:
+            command_name = 'userdel'
+
+        cmd = [self.module.get_bin_path(command_name, True)]
         if self.force:
             cmd.append('-f')
         if self.remove:
@@ -341,7 +359,13 @@ class User(object):
 
         return self.execute_command(cmd)
 
-    def create_user_useradd(self, command_name='useradd'):
+    def create_user_useradd(self):
+
+        if self.local:
+            command_name = 'luseradd'
+        else:
+            command_name = 'useradd'
+
         cmd = [self.module.get_bin_path(command_name, True)]
 
         if self.uid is not None:
@@ -399,7 +423,7 @@ class User(object):
             cmd.append('-p')
             cmd.append(self.password)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -417,7 +441,13 @@ class User(object):
 
     def _check_usermod_append(self):
         # check if this version of usermod can append groups
-        usermod_path = self.module.get_bin_path('usermod', True)
+
+        if self.local:
+            command_name = 'lusermod'
+        else:
+            command_name = 'usermod'
+
+        usermod_path = self.module.get_bin_path(command_name, True)
 
         # for some reason, usermod --help cannot be used by non root
         # on RH/Fedora, due to lack of execute bit for others
@@ -439,7 +469,13 @@ class User(object):
 
 
     def modify_user_usermod(self):
-        cmd = [self.module.get_bin_path('usermod', True)]
+
+        if self.local:
+            command_name = 'lusermod'
+        else:
+            command_name = 'usermod'
+
+        cmd = [self.module.get_bin_path(command_name, True)]
         info = self.user_info()
         has_append = self._check_usermod_append()
 
@@ -783,7 +819,7 @@ class FreeBsdUser(User):
             cmd.append('-G')
             cmd.append(','.join(groups))
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -981,7 +1017,7 @@ class OpenBSDUser(User):
             cmd.append('-p')
             cmd.append(self.password)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -1151,7 +1187,7 @@ class NetBSDUser(User):
             cmd.append('-p')
             cmd.append(self.password)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -1328,7 +1364,7 @@ class SunOS(User):
             cmd.append('-s')
             cmd.append(self.shell)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -1348,6 +1384,7 @@ class SunOS(User):
                 try:
                     lines = []
                     for line in open(self.SHADOWFILE, 'rb').readlines():
+                        line = to_native(line, errors='surrogate_or_strict')
                         fields = line.strip().split(':')
                         if not fields[0] == self.name:
                             lines.append(line)
@@ -1442,6 +1479,7 @@ class SunOS(User):
                 try:
                     lines = []
                     for line in open(self.SHADOWFILE, 'rb').readlines():
+                        line = to_native(line, errors='surrogate_or_strict')
                         fields = line.strip().split(':')
                         if not fields[0] == self.name:
                             lines.append(line)
@@ -1721,13 +1759,18 @@ class DarwinUser(User):
             self.uid = str(self._get_next_uid(self.system))
 
         # Homedir is not created by default
-        if self.createhome:
+        if self.create_home:
             if self.home is None:
                 self.home = '/Users/%s' % self.name
             if not self.module.check_mode:
                 if not os.path.exists(self.home):
                     os.makedirs(self.home)
                 self.chown_homedir(int(self.uid), int(self.group), self.home)
+
+        # dscl sets shell to /usr/bin/false when UserShell is not specified
+        # so set the shell to /bin/bash when the user is not a system user
+        if not self.system and self.shell is None:
+            self.shell = '/bin/bash'
 
         for field in self.fields:
             if field[0] in self.__dict__ and self.__dict__[field[0]]:
@@ -1854,7 +1897,7 @@ class AIX(User):
             cmd.append('-s')
             cmd.append(self.shell)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
 
             if self.skeleton is not None:
@@ -2004,7 +2047,7 @@ class HPUX(User):
             cmd.append('-p')
             cmd.append(self.password)
 
-        if self.createhome:
+        if self.create_home:
             cmd.append('-m')
         else:
             cmd.append('-M')
@@ -2126,7 +2169,7 @@ def main():
             force=dict(default='no', type='bool'),
             remove=dict(default='no', type='bool'),
             # following options are specific to useradd
-            createhome=dict(default='yes', type='bool'),
+            create_home=dict(default='yes', aliases=['createhome'], type='bool'),
             skeleton=dict(default=None, type='str'),
             system=dict(default='no', type='bool'),
             # following options are specific to usermod
@@ -2141,6 +2184,7 @@ def main():
             ssh_key_passphrase=dict(default=None, type='str', no_log=True),
             update_password=dict(default='always',choices=['always','on_create'],type='str'),
             expires=dict(default=None, type='float'),
+            local=dict(type='bool'),
         ),
         supports_check_mode=True
     )
@@ -2175,7 +2219,7 @@ def main():
                 result['system'] = user.name
             else:
                 result['system'] = user.system
-                result['createhome'] = user.createhome
+                result['create_home'] = user.create_home
         else:
             # modify user (note: this function is check mode aware)
             (rc, out, err) = user.modify_user()
@@ -2213,7 +2257,7 @@ def main():
         info = user.user_info()
         if user.home is None:
             user.home = info[5]
-        if not os.path.exists(user.home) and user.createhome:
+        if not os.path.exists(user.home) and user.create_home:
             if not module.check_mode:
                 user.create_homedir(user.home)
                 user.chown_homedir(info[2], info[3], user.home)

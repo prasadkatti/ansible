@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -264,7 +264,7 @@ def main():
             check=dict(required=False),
             creator=dict(required=False),
             expire=dict(required=False),
-            expire_on_resolve=dict(type=bool, required=False),
+            expire_on_resolve=dict(type='bool', required=False),
             reason=dict(required=False),
             state=dict(default='present', choices=['present', 'absent']),
             subscription=dict(required=True),

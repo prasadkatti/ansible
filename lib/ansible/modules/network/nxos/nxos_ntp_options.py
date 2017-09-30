@@ -16,9 +16,9 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'community'}
+                    'supported_by': 'network'}
 
 
 DOCUMENTATION = '''
@@ -33,6 +33,7 @@ description:
 author:
     - Jason Edelman (@jedelman8)
 notes:
+    - Tested against NXOSv 7.3.(0)D1(1) on VIRL
     - At least one of C(master) or C(logging) params must be supplied.
     - When C(state=absent), boolean parameters are flipped,
       e.g. C(master=true) will disable the authoritative server.
@@ -104,7 +105,7 @@ def get_current(module):
         master = False
         stratum = None
 
-    logging = 'Enabled' in output[1]
+    logging = 'enabled' in output[1].lower()
 
     return {'master': master, 'stratum': stratum, 'logging': logging}
 
@@ -112,17 +113,14 @@ def get_current(module):
 def main():
     argument_spec = dict(
         master=dict(required=False, type='bool'),
-        stratum=dict(type='str'),
+        stratum=dict(required=False, type='str', default='8'),
         logging=dict(required=False, type='bool'),
         state=dict(choices=['absent', 'present'], default='present'),
     )
 
     argument_spec.update(nxos_argument_spec)
 
-    required_together = [('master', 'stratum')]
-
     module = AnsibleModule(argument_spec=argument_spec,
-                           required_together=required_together,
                            supports_check_mode=True)
 
     warnings = list()

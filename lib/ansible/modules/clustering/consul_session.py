@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -98,7 +98,7 @@ options:
     behavior:
         description:
           - the optional behavior that can be attached to the session when it
-            is created. This can be set to either ‘release’ or ‘delete’. This
+            is created. This can be set to either 'release' or 'delete'. This
             controls the behavior when a session is invalidated.
         default: release
         required: false

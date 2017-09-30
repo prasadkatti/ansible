@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
                     'supported_by': 'community'}
 
@@ -184,11 +184,8 @@ def get_target_group_attributes(connection, module, target_group_arn):
         module.fail_json(msg=e.message, exception=traceback.format_exc(), **camel_dict_to_snake_dict(e.response))
 
     # Replace '.' with '_' in attribute key names to make it more Ansibley
-    for k, v in target_group_attributes.items():
-        target_group_attributes[k.replace('.', '_')] = v
-        del target_group_attributes[k]
-
-    return target_group_attributes
+    return dict((k.replace('.', '_'), v)
+                for (k, v) in target_group_attributes.items())
 
 
 def get_target_group_tags(connection, module, target_group_arn):

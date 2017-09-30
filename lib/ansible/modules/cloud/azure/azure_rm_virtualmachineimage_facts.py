@@ -9,9 +9,9 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.0',
+ANSIBLE_METADATA = {'metadata_version': '1.1',
                     'status': ['preview'],
-                    'supported_by': 'curated'}
+                    'supported_by': 'certified'}
 
 
 DOCUMENTATION = '''
@@ -110,7 +110,7 @@ except:
 from ansible.module_utils.azure_rm_common import AzureRMModuleBase
 
 
-AZURE_ENUM_MODULES = ['azure.mgmt.compute.models.compute_management_client_enums']
+AZURE_ENUM_MODULES = ['azure.mgmt.compute.models']
 
 
 class AzureRMVirtualMachineImageFacts(AzureRMModuleBase):
